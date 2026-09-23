@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<p class="perm-context-note"><i class="bi bi-person-badge-fill"></i> {% trans "Instructor action — only visible and reachable by the course owner." %}</p>
+
+<p><a href="{% url 'learning:course_detail' course.id %}">← {{ course.title }}</a></p>
+
+<h1>
+    {% if mode == 'edit' %}
+        <i class="bi bi-pencil-square"></i> {% trans "Edit lesson" %}
+    {% else %}
+        <i class="bi bi-plus-circle"></i> {% trans "New lesson" %}
+    {% endif %}
+</h1>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div style="display:flex;gap:10px;margin-top:10px;">
+            <button type="submit" class="btn btn-primary">
+                {% if mode == 'edit' %}{% trans "Save changes" %}{% else %}{% trans "Add lesson" %}{% endif %}
+            </button>
+            {% if mode == 'edit' %}
+                <a class="btn" href="{% url 'learning:lesson_detail' lesson.id %}">{% trans "Cancel" %}</a>
+            {% else %}
+                <a class="btn" href="{% url 'learning:course_detail' course.id %}">{% trans "Cancel" %}</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}

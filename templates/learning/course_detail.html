@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<div class="dash-header">
+    <h1>{{ course.title }}</h1>
+    {% if can_manage %}
+        <div class="manage-actions">
+            <a href="{% url 'learning:course_edit' course.id %}" class="btn-icon btn-icon-edit" title="{% trans 'Edit course' %}"><i class="bi bi-pencil-fill"></i></a>
+            <form method="post" action="{% url 'learning:course_delete' course.id %}" onsubmit="return confirm('{% trans "Delete this course? This cannot be undone." %}');" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-icon btn-icon-delete" title="{% trans 'Delete course' %}"><i class="bi bi-trash-fill"></i></button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+<p>{{ course.description }}</p>
+
+{% if not request.user.is_staff and not can_manage %}
+    {% if is_enrolled %}
+    <div class="card">
+        <p style="margin-bottom:6px;">{% trans "Your progress" %}: {{ progress_percentage }}%</p>
+        <div class="progress-track">
+            <div class="progress-mask" style="width: {{ progress_remaining }}%;"></div>
+        </div>
+    </div>
+    {% else %}
+        <form method="post" action="{% url 'learning:enroll' course.id %}">
+            {% csrf_token %}
+            <button class="btn btn-primary">{% trans "Enroll in this course" %}</button>
+        </form>
+    {% endif %}
+{% endif %}
+
+<div class="dash-header" style="margin-top:24px;">
+    <h3>{% trans "Lessons" %}</h3>
+    {% if can_manage %}
+        <a href="{% url 'learning:lesson_create' course.id %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> {% trans "Add lesson" %}
+        </a>
+    {% endif %}
+</div>
+
+{% for lesson in lessons %}
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+            <h4 style="margin:0;"><a href="{% url 'learning:lesson_detail' lesson.id %}">{{ lesson.order_number }}. {{ lesson.title }}</a></h4>
+            {% if can_manage %}
+                <div class="manage-actions">
+                    <a href="{% url 'learning:lesson_edit' lesson.id %}" class="btn-icon btn-icon-edit" title="{% trans 'Edit' %}"><i class="bi bi-pencil-fill"></i></a>
+                    <form method="post" action="{% url 'learning:lesson_delete' lesson.id %}" onsubmit="return confirm('{% trans "Delete this lesson? This cannot be undone." %}');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-icon btn-icon-delete" title="{% trans 'Delete' %}"><i class="bi bi-trash-fill"></i></button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+        {% for quiz in lesson.quizzes.all %}
+            <a class="btn" href="{% url 'learning:quiz_take' quiz.id %}">📝 {{ quiz.title|default:"Lesson quiz" }}</a>
+        {% endfor %}
+    </div>
+{% empty %}
+    <p>{% trans "No lessons added yet." %}</p>
+{% endfor %}
+{% endblock %}

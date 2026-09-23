@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% load static i18n %}
+
+{% block content %}
+<div class="container">
+    <div class="dash-header">
+        <div>
+            <h2>{% trans "Welcome," %} {{ user.username }} 👋</h2>
+            <p class="text-dim">{% trans "Welcome back to your dashboard" %}</p>
+        </div>
+        <div class="dash-header-stats">
+            {% if user.is_staff %}
+                <span class="badge-pill">👨‍🏫 {% trans "Certified Instructor" %}</span>
+                <span class="badge-pill points-glow">🔥 {% trans "Contribution Points:" %} {{ user.points }}</span>
+            {% else %}
+                <span class="badge-pill points-glow">⭐ {% trans "Points:" %} {{ user.points }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="dash-layout">
+        <aside class="dash-sidebar">
+            <button class="dash-nav-item active" data-target="tab-courses">
+                📚 {% if user.is_staff %}{% trans "Courses I Teach" %}{% else %}{% trans "Enrolled Courses" %}{% endif %}
+            </button>
+
+            {% if user.is_staff %}
+            <button class="dash-nav-item" data-target="tab-lectures">
+                📹 {% trans "Live Lectures (Zoom)" %}
+            </button>
+            {% endif %}
+
+            <button class="dash-nav-item" data-target="tab-tasks">
+                ☑️ {% trans "Task List" %}
+            </button>
+
+            {% if not user.is_staff and show_azkar %}
+            <button class="dash-nav-item" data-target="tab-azkar">
+                📿 {% trans "Daily Azkar" %}
+            </button>
+            {% endif %}
+        </aside>
+
+        <main class="dash-main">
+            <div id="tab-courses" class="dash-panel active">
+                <div class="dash-header">
+                    <h2>{% trans "Courses" %}</h2>
+                    {% if user.is_staff %}
+                        <a href="{% url 'learning:course_create' %}" class="btn btn-primary">+ {% trans "Add New Course" %}</a>
+                    {% endif %}
+                </div>
+
+                <div class="courses-list">
+                    {% for course in my_courses %}
+                        <div class="card">
+                            <h3>
+                                <a href="{% url 'learning:course_detail' course.id %}">
+                                    {{ course.title }}
+                                </a>
+                            </h3>
+
+                            <p style="margin: 10px 0; color: var(--ink-dim);">{{ course.description|default:_("No description available") }}</p>
+
+                            {% if not user.is_staff and course.progress_percentage is not None %}
+                                <div class="progress-track" style="margin: 12px 0 6px 0;">
+                                    <div class="progress-mask" style="width: {{ course.progress_remaining }}%;"></div>
+                                </div>
+                                <small style="color: var(--ink-dim);">{% trans "Progress:" %} {{ course.progress_percentage }}%</small>
+                            {% endif %}
+
+                            <div style="margin-top: 14px;">
+                                {% if user.is_staff %}
+                                    <a href="{% url 'learning:course_edit' course.id %}" class="btn">✏️ {% trans "Edit Course" %}</a>
+                                {% else %}
+                                    <a href="{% url 'learning:course_detail' course.id %}" class="btn btn-primary">📖 {% trans "View Course" %}</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="card">
+                            <p>{% trans "No courses found." %}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if user.is_staff %}
+            <div id="tab-lectures" class="dash-panel">
+                <div class="dash-header">
+                    <h2>{% trans "Live Lectures" %}</h2>
+                    <a href="{% url 'learning:live_lecture_create' %}" class="btn btn-primary">+ {% trans "Schedule Zoom Lecture" %}</a>
+                </div>
+                <div class="lectures-list">
+                    {% for lecture in upcoming_lectures %}
+                        <div class="card">
+                            <h3>{{ lecture.title }} - ({{ lecture.course.title }})</h3>
+                            <p style="margin: 10px 0; color: var(--ink-dim);">🕒 {{ lecture.scheduled_at }}</p>
+                            <a href="{{ lecture.zoom_url|default:'https://zoom.us/test' }}" target="_blank" class="btn btn-primary">
+                                🎥 {% trans "Start Zoom Lecture" %}
+                            </a>
+                        </div>
+                    {% empty %}
+                        <div class="card">
+                            <p>{% trans "No upcoming lectures." %}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div id="tab-tasks" class="dash-panel">
+                <h2>{% trans "Task List" %}</h2>
+
+                <div class="card">
+                    <form action="{% url 'core:task_create' %}" method="post" class="task-input-row">
+                        {% csrf_token %}
+                        <input type="text" name="text" placeholder="{% trans 'Add a new task...' %}" required>
+                        <button type="submit" class="btn btn-primary">{% trans "Add" %}</button>
+                    </form>
+
+                    <ul class="task-list">
+                        {% for task in tasks %}
+                            <li class="task-item">
+                                <form action="{% url 'core:task_toggle' task.id %}" method="post" style="width: 100%;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dash-nav-item" style="width: 100%; padding: 6px 0;">
+                                        <span class="task-checkbox {% if task.is_done %}checked{% endif %}">
+                                            {% if task.is_done %}✓{% endif %}
+                                        </span>
+                                        <span class="task-text {% if task.is_done %}done{% endif %}">
+                                            {{ task.text }}
+                                        </span>
+                                    </button>
+                                </form>
+                            </li>
+                        {% empty %}
+                            <p style="color: var(--ink-dim); padding: 10px 0;">{% trans "No tasks available." %}</p>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            {% if not user.is_staff and show_azkar %}
+            <div id="tab-azkar" class="dash-panel">
+                <h2>{% trans "Daily Azkar & Mindfulness" %}</h2>
+
+                {% if azkar_gallery %}
+                    <div class="azkar-gallery">
+                        {% for item in azkar_gallery %}
+                            <div class="azkar-gallery-item">
+                                <img src="{{ item.image.url }}" alt="Dhikr Image">
+                                {% if item.source %}
+                                    <span class="azkar-source-below">{{ item.source }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% elif azkar_item %}
+                    <div class="card azkar-card">
+                        <div class="azkar-image-wrap">
+                            {% if azkar_item.image %}
+                                <img src="{{ azkar_item.image.url }}" class="azkar-image" alt="Dhikr Image">
+                            {% else %}
+                                <p class="points-glow" style="font-size: 20px; line-height: 1.8;">{{ azkar_item.text }}</p>
+                            {% endif %}
+                            {% if azkar_item.source %}
+                                <p class="azkar-source-below">{{ azkar_item.source }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="card azkar-card">
+                        <div class="azkar-image-wrap">
+                            <p class="points-glow" style="font-size: 22px;">"أَلا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ"</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.dash-nav-item[data-target]');
+    const tabPanels = document.querySelectorAll('.dash-panel');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('data-target');
+
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabPanels.forEach(panel => panel.classList.remove('active'));
+
+            this.classList.add('active');
+            const activePanel = document.getElementById(targetId);
+            if (activePanel) {
+                activePanel.classList.add('active');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

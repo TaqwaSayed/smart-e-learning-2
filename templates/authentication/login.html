@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:60px auto;">
+    <h2>{% trans "Log in" %}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">{% trans "Log in" %}</button>
+    </form>
+    <p style="margin-top:16px;">{% trans "Don't have an account?" %} <a href="{% url 'authentication:register' %}">{% trans "Sign up" %}</a></p>
+</div>
+{% endblock %}

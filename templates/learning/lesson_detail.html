@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<p><a href="{% url 'learning:course_detail' lesson.course.id %}">← {{ lesson.course.title }}</a></p>
+<div class="dash-header">
+    <h1 style="margin:0;">{{ lesson.order_number }}. {{ lesson.title }}</h1>
+    {% if can_manage %}
+        <div class="manage-actions">
+            <a href="{% url 'learning:lesson_edit' lesson.id %}" class="btn-icon btn-icon-edit" title="{% trans 'Edit lesson' %}"><i class="bi bi-pencil-fill"></i></a>
+            <form method="post" action="{% url 'learning:lesson_delete' lesson.id %}" onsubmit="return confirm('{% trans "Delete this lesson? This cannot be undone." %}');" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-icon btn-icon-delete" title="{% trans 'Delete lesson' %}"><i class="bi bi-trash-fill"></i></button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+{% if can_manage %}
+    <p class="perm-context-note"><i class="bi bi-shield-check"></i> {% trans "You teach this course — Edit/Delete are visible only to you." %}</p>
+{% endif %}
+
+{% if lesson.video_url %}
+    <div class="card">
+        <a class="btn btn-primary" href="{{ lesson.video_url }}" target="_blank" rel="noopener">▶ {% trans "Watch the video" %}</a>
+    </div>
+{% endif %}
+
+<div class="card">
+    <h3>{% trans "Lesson content" %}</h3>
+    {% if lesson.content %}
+        <div style="line-height:1.8;">{{ lesson.content|linebreaks }}</div>
+    {% else %}
+        <p style="color:var(--ink-dim);">{% trans "No written content added for this lesson yet — add it from the Django admin." %}</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>🤖 {% trans "AI Summary" %}</h3>
+    <button id="summarize-btn" class="btn btn-primary">{% trans "Summarize this lesson" %}</button>
+    <div id="summary-box" style="margin-top:16px;display:none;white-space:pre-line;line-height:1.8;"></div>
+    <p id="summary-error" style="display:none;color:var(--danger);margin-top:10px;"></p>
+</div>
+
+{% if quizzes %}
+<div class="card">
+    <h3>{% trans "Quizzes for this lesson" %}</h3>
+    {% for quiz in quizzes %}
+        <a class="btn" href="{% url 'learning:quiz_take' quiz.id %}">📝 {{ quiz.title|default:"Lesson quiz" }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('summarize-btn').addEventListener('click', function () {
+    const btn = this;
+    const box = document.getElementById('summary-box');
+    const errBox = document.getElementById('summary-error');
+    btn.disabled = true;
+    btn.textContent = "{% trans 'Summarizing...' %}";
+    errBox.style.display = 'none';
+
+    fetch("{% url 'learning:lesson_summarize' lesson.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    })
+    .then((r) => r.json().then((data) => ({ status: r.status, data })))
+    .then(({ status, data }) => {
+        if (status !== 200) {
+            errBox.textContent = data.error || "{% trans 'Could not generate a summary right now.' %}";
+            errBox.style.display = 'block';
+        } else {
+            box.textContent = data.summary;
+            box.style.display = 'block';
+        }
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = "{% trans 'Summarize this lesson' %}";
+    });
+});
+
+// Show the "before study" dua/verse once when the student opens the lesson.
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.showMindfulnessPopup) {
+        showMindfulnessPopup('BEFORE');
+    }
+});
+</script>
+{% endblock %}

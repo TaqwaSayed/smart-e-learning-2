@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>🤖 {% trans "Socratic AI Tutor" %}</h1>
+<p style="color:var(--ink-dim);font-size:13px;">{% trans "This tutor can check your quiz performance, save a study plan, or send you a reminder — just ask." %}</p>
+
+<div class="card" id="chat-window" style="min-height:300px;"></div>
+
+<form id="chat-form" class="chat-input-row">
+    {% csrf_token %}
+    <input type="text" id="chat-input" placeholder="{% trans 'Type your question here...' %}">
+    <button type="button" id="mic-btn" class="btn btn-mic" title="{% trans 'Speak your question' %}">🎤</button>
+    <button type="submit" class="btn btn-primary">{% trans "Send" %}</button>
+</form>
+<p id="mic-status" style="font-size:13px;color:var(--ink-dim);"></p>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let sessionId = null;
+const chatWindow = document.getElementById('chat-window');
+const chatInput = document.getElementById('chat-input');
+
+function appendMessage(text, sender) {
+    const p = document.createElement('p');
+    p.innerHTML = `<strong>${sender === 'USER' ? '🧑‍🎓' : '🤖'}</strong> ${text}`;
+    chatWindow.appendChild(p);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+document.getElementById('chat-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+    appendMessage(message, 'USER');
+    chatInput.value = '';
+
+    fetch("{% url 'core:chat_send' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({ message, session_id: sessionId }),
+    })
+    .then((r) => r.json())
+    .then((data) => {
+        sessionId = data.session_id;
+        appendMessage(data.reply, 'AI');
+    });
+});
+
+// --- Voice input (Web Speech API) ---
+(function () {
+    const micBtn = document.getElementById('mic-btn');
+    const micStatus = document.getElementById('mic-status');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        micBtn.disabled = true;
+        micStatus.textContent = "{% trans 'Voice input is not supported in this browser.' %}";
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "{{ LANGUAGE_CODE }}" === "ar" ? "ar-EG" : "en-US";
+
+    let listening = false;
+
+    micBtn.addEventListener('click', function () {
+        if (listening) { recognition.stop(); return; }
+        recognition.start();
+    });
+
+    recognition.onstart = function () {
+        listening = true;
+        micBtn.classList.add('listening');
+        micStatus.textContent = "{% trans 'Listening...' %}";
+    };
+
+    recognition.onresult = function (event) {
+        chatInput.value = event.results[0][0].transcript;
+        micStatus.textContent = "";
+    };
+
+    recognition.onerror = function (event) {
+        micStatus.textContent = "{% trans 'Voice input error' %}: " + event.error;
+    };
+
+    recognition.onend = function () {
+        listening = false;
+        micBtn.classList.remove('listening');
+    };
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:60px auto;text-align:center;">
+    <h2>🤲 {% trans "Before you go" %}</h2>
+    <p style="font-size:18px;line-height:1.8;margin:20px 0;">
+        {% if LANGUAGE_CODE == 'ar' %}
+            سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ أَسْتَغْفِرُكَ وَأَتُوبُ إِلَيْكَ
+        {% else %}
+            Glory be to You, O Allah, and praise be to You. I bear witness that there is no god but You; I seek Your forgiveness and turn to You in repentance.
+        {% endif %}
+    </p>
+    <p style="color:var(--ink-dim);font-size:13px;margin-bottom:24px;">
+        {% trans "Dua' kaffarat al-majlis — recited at the end of a gathering" %}
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">{% trans "Confirm logout" %}</button>
+        <a href="{% url 'core:dashboard' %}" class="btn" style="margin-inline-start:10px;">{% trans "Cancel" %}</a>
+    </form>
+</div>
+{% endblock %}

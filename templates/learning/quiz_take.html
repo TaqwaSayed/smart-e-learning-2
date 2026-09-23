@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>{{ quiz.title|default:"Quiz" }}</h1>
+<p>{% trans "These questions are ordered based on your weak spots" %} 🎯</p>
+
+<form id="quiz-form">
+    {% csrf_token %}
+    {% for question in questions %}
+        <div class="card">
+            <p style="margin-bottom:10px;">
+                {% if question.is_ai_generated %}
+                    <span class="badge-pill badge-ai">🤖 {% trans "GenAI Created" %}</span>
+                {% else %}
+                    <span class="badge-pill badge-bank">📘 {% trans "Teacher Bank" %}</span>
+                {% endif %}
+                {% if question.difficulty_level == 'EASY' %}
+                    <span class="badge-pill badge-easy">🟢 {% trans "EASY" %}</span>
+                {% elif question.difficulty_level == 'MEDIUM' %}
+                    <span class="badge-pill badge-medium">🟡 {% trans "MEDIUM" %}</span>
+                {% else %}
+                    <span class="badge-pill badge-hard">🔴 {% trans "HARD" %}</span>
+                {% endif %}
+                {% if question.topic %}<span class="badge-pill">{{ question.topic.name }}</span>{% endif %}
+            </p>
+            <p><strong>{{ forloop.counter }}.</strong> {{ question.question_text }}</p>
+            {% for choice in question.choices.all %}
+                <label style="display:block;margin-bottom:6px;">
+                    <input type="radio" name="q_{{ question.id }}" value="{{ choice.id }}">
+                    {{ choice.choice_text }}
+                </label>
+            {% endfor %}
+        </div>
+    {% empty %}
+        <p>{% trans "No questions available for this quiz yet." %}</p>
+    {% endfor %}
+
+    {% if questions %}
+        <button type="submit" class="btn btn-primary">{% trans "Submit answers" %}</button>
+    {% endif %}
+</form>
+
+<div id="quiz-result" class="card" style="display:none;"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('quiz-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const answers = [];
+    document.querySelectorAll('input[type=radio]:checked').forEach((el) => {
+        const questionId = el.name.replace('q_', '');
+        answers.push({ question_id: parseInt(questionId), selected_choice_id: parseInt(el.value) });
+    });
+
+    fetch("{% url 'learning:quiz_submit' quiz.id %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({ answers }),
+    })
+    .then((r) => r.json())
+    .then((data) => {
+        const box = document.getElementById('quiz-result');
+        box.style.display = 'block';
+        box.innerHTML = `<h3>{% trans "Score" %}: ${data.score}%</h3><p>+${data.points_earned} {% trans "points" %} ⭐</p>`;
+        window.showMindfulnessPopup('AFTER');
+    });
+});
+</script>
+{% endblock %}

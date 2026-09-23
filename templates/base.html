@@ -1,0 +1,110 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% trans "Smart E-Learning 2" %}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body data-pomodoro="{% if user.is_authenticated and not user.is_staff %}on{% else %}off{% endif %}">
+    <canvas id="particles-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></canvas>
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;">
+    <header class="navbar">
+        <a href="{% url 'core:dashboard' %}" class="brand">Smart E-Learning</a>
+        <nav>
+            {% if user.is_authenticated %}
+                {% if not user.is_staff %}
+                    <span class="badge-pill">⭐ <span class="points-glow">{{ user.points }}</span> {% trans "points" %}</span>
+                {% endif %}
+                <a href="{% url 'core:dashboard' %}">{% trans "Dashboard" %}</a>
+                <a href="{% url 'learning:course_list' %}">{% trans "Courses" %}</a>
+                {% if not user.is_staff %}
+                    <a href="{% url 'core:chat' %}" id="ai-tutor-nav-link" class="ai-tutor-nav-link">✨ {% trans "AI Tutor" %}</a>
+                {% endif %}
+                <a href="{% url 'authentication:logout' %}">{% trans "Log out" %}</a>
+            {% else %}
+                <a href="{% url 'authentication:login' %}">{% trans "Log in" %}</a>
+                <a href="{% url 'authentication:register' %}">{% trans "Sign up" %}</a>
+            {% endif %}
+
+            {% get_current_language as CURRENT_LANGUAGE %}
+            <form action="{% url 'set_language' %}" method="post" class="lang-switch-form">
+                {% csrf_token %}
+                <input name="next" type="hidden" value="{{ request.path }}">
+                {% if CURRENT_LANGUAGE == 'en' %}
+                    <input name="language" type="hidden" value="ar">
+                    <button type="submit" class="btn lang-switch-btn" title="التبديل إلى العربية">🌐 AR</button>
+                {% else %}
+                    <input name="language" type="hidden" value="en">
+                    <button type="submit" class="btn lang-switch-btn" title="Switch to English">🌐 EN</button>
+                {% endif %}
+            </form>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="card">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="mindfulness-overlay" class="mindfulness-overlay">
+        <div class="mindfulness-box">
+            <img id="mindfulness-image" class="mindfulness-image" style="display:none;" alt="">
+            <div class="text" id="mindfulness-text"></div>
+            <div class="source" id="mindfulness-source"></div>
+            <button class="btn btn-primary" id="mindfulness-close">{% trans "OK, back to studying" %}</button>
+        </div>
+    </div>
+
+    <script src="{% static 'js/mindfulness.js' %}"></script>
+    <script src="{% static 'js/particles.js' %}"></script>
+
+    {% if user.is_authenticated and not user.is_staff %}
+    <button id="ai-fab" class="ai-fab" type="button" aria-label="{% trans 'AI Tutor' %}" title="{% trans 'AI Tutor' %}">
+        <i class="bi bi-robot"></i>
+        <span class="ai-fab-pulse"></span>
+    </button>
+
+    <div id="ai-chat-panel" class="ai-chat-panel">
+        <div class="ai-chat-panel-header">
+            <div class="ai-chat-panel-title"><i class="bi bi-stars"></i> {% trans "AI Tutor" %}</div>
+            <button id="ai-chat-close" type="button" class="ai-chat-close" aria-label="{% trans 'Close' %}"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="ai-chat-messages" class="ai-chat-messages">
+            <div class="ai-msg ai-msg-bot">
+                <span class="ai-msg-avatar">🤖</span>
+                <span class="ai-msg-bubble">{% trans "Hi! Ask me anything about your lessons — I'll guide you to the answer instead of just giving it away." %}</span>
+            </div>
+        </div>
+        <div id="ai-chat-typing" class="ai-chat-typing" style="display:none;">
+            <span class="ai-msg-avatar">🤖</span>
+            <span class="ai-typing-dots"><i></i><i></i><i></i></span>
+        </div>
+        <form id="ai-chat-form" class="ai-chat-panel-input">
+            <input type="text" id="ai-chat-input" placeholder="{% trans 'Type your question here...' %}" autocomplete="off">
+            <button type="submit" class="ai-chat-send" aria-label="{% trans 'Send' %}"><i class="bi bi-send-fill"></i></button>
+        </form>
+    </div>
+
+    <script>
+    window.AI_TUTOR = {
+        sendUrl: "{% url 'core:chat_send' %}",
+        csrfToken: "{{ csrf_token }}",
+    };
+    </script>
+    <script src="{% static 'js/ai_tutor.js' %}"></script>
+    {% endif %}
+    {% block extra_js %}{% endblock %}
+    </div>
+</body>
+</html>
